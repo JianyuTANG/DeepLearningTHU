@@ -5,6 +5,7 @@ class Corpus(object):
     def __init__(self, path, batch_size, max_sql):
         self.vocabulary = []
         self.word_id = {}
+        # 长度相当于整个文件单词数量的tensor 每个位置是对应单词的id
         self.train = self.tokenize(os.path.join(path, 'train.txt'))
         self.valid = self.tokenize(os.path.join(path, 'valid.txt'))
         self.dset_flag = "train"

@@ -4,15 +4,17 @@ import time
 import math
 import torch
 import torch.nn as nn
-
+import torch.optim as optim
 import data
-import model
+from .model import LMModel
 import os
 import os.path as osp
 
 parser = argparse.ArgumentParser(description='PyTorch ptb Language Model')
 parser.add_argument('--epochs', type=int, default=40,
                     help='upper epoch limit')
+parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float,
+                    help='initial learning rate')
 parser.add_argument('--train_batch_size', type=int, default=20, metavar='N',
                     help='batch size')
 parser.add_argument('--eval_batch_size', type=int, default=10, metavar='N',
@@ -22,7 +24,7 @@ parser.add_argument('--max_sql', type=int, default=35,
 parser.add_argument('--seed', type=int, default=1234,
                     help='set random seed')
 parser.add_argument('--cuda', action='store_true', help='use CUDA device')
-parser.add_argument('--gpu_id', type=int, help='GPU device id used')
+parser.add_argument('--gpu_id', type=int, default=0, help='GPU device id used')
 
 args = parser.parse_args()
 
@@ -30,7 +32,7 @@ args = parser.parse_args()
 torch.manual_seed(args.seed)
 
 # Use gpu or cpu to train
-use_gpu = False
+use_gpu = True
 
 if use_gpu:
     torch.cuda.set_device(args.gpu_id)
@@ -51,8 +53,14 @@ data_loader = data.Corpus("../data/ptb", batch_size, args.max_sql)
 
 ########################################
 
-criterion = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss().to(device)
 
+
+nvoc = len(data_loader.vocabulary)
+ninput = 50
+nhid = 50
+nlayer = 3
+model = LMModel(nvoc, ninput, nhid, nlayer).to(device)
 
 # WRITE CODE HERE within two '#' bar
 ########################################
@@ -61,20 +69,68 @@ criterion = nn.CrossEntropyLoss()
 # And then exp(average cross-entropy loss) is perplexity.
 
 def evaluate():
-    pass
+    model.train(False)
+    total_loss = 0.0
+    batch_num = 0
+    end_flag = False
+    data_loader.set_train()
+    while not end_flag:
+        data, target, end_flag = data_loader.get_batch()
+        data = data.to(device)
+        target = target.to(device)
+        output = model(data)
+        loss = criterion(output, target)
+        total_loss += loss.item()
+        batch_num += 1
+
+    loss = total_loss / batch_num
+    perplexity = math.exp(loss)
+    return loss, perplexity
+
 ########################################
 
 
 # WRITE CODE HERE within two '#' bar
 ########################################
 # Train Function
+
+lr = args.lr
+optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+
 def train():
-    pass 
+    model.train(True)
+    total_loss = 0.0
+    batch_num = 0
+    end_flag = False
+    data_loader.set_train()
+    while not end_flag:
+        data, target, end_flag = data_loader.get_batch()
+        data = data.to(device)
+        optimizer.zero_grad()
+        target = target.to(device)
+        output = model(data)
+        loss = criterion(output, target)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+        batch_num += 1
+
+    loss = total_loss / batch_num
+    perplexity = math.exp(loss)
+    return loss, perplexity
+
 ########################################
 
 
 # Loop over epochs.
+curve_csv = open("curve.csv", "w")
 for epoch in range(1, args.epochs+1):
-    train()
-    evaluate()
+    train_loss, train_perplexity = train()
+    print("training: {:.4f}, {:.4f}".format(train_loss, train_perplexity))
+    valid_loss, valid_perplexity = evaluate()
+    print("validation: {:.4f}, {:.4f}".format(valid_loss, valid_perplexity))
+    curve_csv.write(
+        "{:d},{:.4f},{:.4f},{:.4f},{:.4f}\n".format(
+        epoch + 1, train_loss, train_perplexity, valid_loss, valid_perplexity))
+
 
