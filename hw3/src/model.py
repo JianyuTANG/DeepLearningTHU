@@ -18,7 +18,7 @@ class LMModel(nn.Module):
             input_size=ninput,
             hidden_size=nhid,
             num_layers=nlayers,
-            bidirectional=True,
+            bidirectional=False,
             dropout=0.5,
         )
         ########################################
@@ -41,10 +41,11 @@ class LMModel(nn.Module):
         # With embeddings, you can get your output here.
         # Output has the dimension of sequence_length * batch_size * number of classes
 
-        output, hidden = self.rnn(input)
+        output, hidden = self.rnn(embeddings)
         ########################################
 
         output = self.drop(output)
-        decoded = self.decoder(output.view(output.size(0)*output.size(1), output.size(2)))
-        return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden
+        decoded = self.decoder(output.view(output.size(0) * output.size(1), output.size(2)))
+        # return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden
+        return decoded.view(-1, decoded.size(1)), hidden
 

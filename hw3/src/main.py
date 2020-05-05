@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import data
-from .model import LMModel
+from model import LMModel
 import os
 import os.path as osp
 
@@ -78,7 +78,7 @@ def evaluate():
         data, target, end_flag = data_loader.get_batch()
         data = data.to(device)
         target = target.to(device)
-        output = model(data)
+        output, _ = model(data)
         loss = criterion(output, target)
         total_loss += loss.item()
         batch_num += 1
@@ -108,7 +108,7 @@ def train():
         data = data.to(device)
         optimizer.zero_grad()
         target = target.to(device)
-        output = model(data)
+        output, _ = model(data)
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
@@ -123,8 +123,11 @@ def train():
 
 
 # Loop over epochs.
+print("batch_size: " + str(train_batch_size))
+print("lr: " + str(lr))
 curve_csv = open("curve.csv", "w")
 for epoch in range(1, args.epochs+1):
+    print('epoch:{:d}/{:d}'.format(epoch, args.epochs))
     train_loss, train_perplexity = train()
     print("training: {:.4f}, {:.4f}".format(train_loss, train_perplexity))
     valid_loss, valid_perplexity = evaluate()
@@ -132,5 +135,6 @@ for epoch in range(1, args.epochs+1):
     curve_csv.write(
         "{:d},{:.4f},{:.4f},{:.4f},{:.4f}\n".format(
         epoch + 1, train_loss, train_perplexity, valid_loss, valid_perplexity))
+    print('*' * 100)
 
 
