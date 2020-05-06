@@ -9,6 +9,8 @@ import data
 from model import LMModel
 import os
 import os.path as osp
+# from torch.utils.tensorboard import SummaryWriter
+
 
 parser = argparse.ArgumentParser(description='PyTorch ptb Language Model')
 parser.add_argument('--epochs', type=int, default=40,
@@ -51,16 +53,16 @@ data_loader = data.Corpus("../data/ptb", batch_size, args.max_sql)
 ########################################
 # Build LMModel model (bulid your language model here)
 
+nvoc = len(data_loader.vocabulary)
+ninput = 150
+nhid = 150
+nlayer = 4
+model = LMModel(nvoc, ninput, nhid, nlayer).to(device)
+
 ########################################
 
 criterion = nn.CrossEntropyLoss().to(device)
 
-
-nvoc = len(data_loader.vocabulary)
-ninput = 50
-nhid = 50
-nlayer = 3
-model = LMModel(nvoc, ninput, nhid, nlayer).to(device)
 
 # WRITE CODE HERE within two '#' bar
 ########################################
@@ -126,15 +128,20 @@ def train():
 print("batch_size: " + str(train_batch_size))
 print("lr: " + str(lr))
 curve_csv = open("curve.csv", "w")
+# writer = SummaryWriter("log/")
 for epoch in range(1, args.epochs+1):
     print('epoch:{:d}/{:d}'.format(epoch, args.epochs))
     train_loss, train_perplexity = train()
     print("training: {:.4f}, {:.4f}".format(train_loss, train_perplexity))
+    # writer.add_scalar('Loss/train', train_loss, epoch)
+    # writer.add_scalar('Perplexity/train', train_loss, epoch)
     valid_loss, valid_perplexity = evaluate()
     print("validation: {:.4f}, {:.4f}".format(valid_loss, valid_perplexity))
     curve_csv.write(
         "{:d},{:.4f},{:.4f},{:.4f},{:.4f}\n".format(
         epoch + 1, train_loss, train_perplexity, valid_loss, valid_perplexity))
+    # writer.add_scalar('Loss/valid', valid_loss, epoch)
+    # writer.add_scalar('Perplexity/valid', valid_perplexity, epoch)
     print('*' * 100)
 
 
