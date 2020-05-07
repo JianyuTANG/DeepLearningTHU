@@ -58,7 +58,7 @@ print("nvoc: " + str(nvoc))
 ninput = 150
 nhid = 150
 nlayer = 4
-model = LMModel(nvoc, ninput, nhid, nlayer).to(device)
+model = LMModel(nvoc, ninput, nhid, nlayer, device).to(device)
 
 ########################################
 

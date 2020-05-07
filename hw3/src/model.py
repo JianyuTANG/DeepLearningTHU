@@ -11,8 +11,6 @@ class TemporalAttention(nn.Module):
             num_layers=1,
             bidirectional=True,
         )
-        self.linear1 = nn.Linear(ninput, ninput)
-        self.linear2 = nn.Linear(ninput, ninput)
         self.linear = nn.Sequential(
             nn.Linear(ninput * 2, ninput),
             nn.Tanh(),
@@ -23,7 +21,6 @@ class TemporalAttention(nn.Module):
 
     def forward(self, s, x):
         h, _ = self.context_encoder(x)
-        s = self.linear1(s)
         e = []
         for i in range(h.size(0)):
             e.append(self.linear(torch.cat((s, h[i]), 1)))
@@ -33,11 +30,11 @@ class TemporalAttention(nn.Module):
 
 
 class RNNwithAttention(nn.Module):
-    def __init__(self, ninput, nhid, nlayers, dropout=0.5):
+    def __init__(self, ninput, nhid, nlayers, dropout=0.5, device="cpu"):
         super().__init__()
         self.attention_model = TemporalAttention(ninput)
-        self.layers = [nn.LSTMCell(ninput, nhid)] + [nn.LSTMCell(nhid, nhid) for i in range(nlayers - 1)]
-        self.dropouts = [nn.Dropout(dropout) for i in range(nlayers - 1)]
+        self.layers = [nn.LSTMCell(ninput, nhid).to(device)] + [nn.LSTMCell(nhid, nhid).to(device) for i in range(nlayers - 1)]
+        self.dropouts = [nn.Dropout(dropout).to(device) for i in range(nlayers - 1)]
         self.nlayers = nlayers
 
     def forward(self, x):
@@ -61,7 +58,7 @@ class LMModel(nn.Module):
     # The word embedding layer have input as a sequence of word index (in the vocabulary) and output a sequence of vector where each one is a word embedding. 
     # The rnn network has input of each word embedding and output a hidden feature corresponding to each word embedding.
     # The output layer has input as the hidden feature and output the probability of each word in the vocabulary.
-    def __init__(self, nvoc, ninput, nhid, nlayers):
+    def __init__(self, nvoc, ninput, nhid, nlayers, device):
         super(LMModel, self).__init__()
         self.drop = nn.Dropout(0.5)
         self.encoder = nn.Embedding(nvoc, ninput)
@@ -81,7 +78,8 @@ class LMModel(nn.Module):
             ninput=ninput,
             nhid=nhid,
             nlayers=nlayers,
-            dropout=0.5
+            dropout=0.5,
+            device=device,
         )
 
         ########################################
