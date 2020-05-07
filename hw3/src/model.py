@@ -33,10 +33,11 @@ class TemporalAttention(nn.Module):
 
 
 class RNNwithAttention(nn.Module):
-    def __init__(self, ninput, nhid, nlayers):
+    def __init__(self, ninput, nhid, nlayers, dropout=0.5):
         super().__init__()
         self.attention_model = TemporalAttention(ninput)
         self.layers = [nn.LSTMCell(ninput, nhid)] + [nn.LSTMCell(nhid, nhid) for i in range(nlayers - 1)]
+        self.dropouts = [nn.Dropout(dropout) for i in range(nlayers - 1)]
         self.nlayers = nlayers
 
     def forward(self, x):
@@ -49,6 +50,8 @@ class RNNwithAttention(nn.Module):
             for j in range(self.nlayers):
                 hid[j] = self.layers[j](input, hid[j])
                 input = hid[j][0]
+                if j != self.nlayers - 1:
+                    input = self.dropouts[j](hid[j][0])
             res.append(input)
         return torch.stack(res, 0)
 
@@ -65,13 +68,22 @@ class LMModel(nn.Module):
         # WRITE CODE HERE witnin two '#' bar
         ########################################
         # Construct you RNN model here. You can add additional parameters to the function.
-        self.rnn = nn.LSTM(
-            input_size=ninput,
-            hidden_size=nhid,
-            num_layers=nlayers,
-            bidirectional=False,
-            dropout=0.5,
+
+        # self.rnn = nn.LSTM(
+        #     input_size=ninput,
+        #     hidden_size=nhid,
+        #     num_layers=nlayers,
+        #     bidirectional=False,
+        #     dropout=0.5,
+        # )
+
+        self.rnn = RNNwithAttention(
+            ninput=ninput,
+            nhid=nhid,
+            nlayers=nlayers,
+            dropout=0.5
         )
+
         ########################################
         self.decoder = nn.Linear(nhid, nvoc)
         self.init_weights()
@@ -92,13 +104,15 @@ class LMModel(nn.Module):
         # With embeddings, you can get your output here.
         # Output has the dimension of sequence_length * batch_size * number of classes
 
-        output, hidden = self.rnn(embeddings)
+        #output, hidden = self.rnn(embeddings)
+        output = self.rnn(embeddings)
+
         ########################################
 
         output = self.drop(output)
         decoded = self.decoder(output.view(output.size(0) * output.size(1), output.size(2)))
         # return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden
-        return decoded.view(-1, decoded.size(1)), hidden
+        return decoded.view(-1, decoded.size(1)), 0
 
 
 
@@ -109,9 +123,9 @@ if __name__ == "__main__":
     x = torch.rand(30, 20, 10)
     att = model(s, x)
     print(att.shape)
-    
+
     # test rnn_with_attention
     x = torch.rand(30, 20, 150)
-    rnn = RNNwithAttention(150, 150, 4)
+    rnn = RNNwithAttention(150, 150, 4, 0.5)
     output = rnn(x)
     print(output.shape)
