@@ -54,6 +54,7 @@ data_loader = data.Corpus("../data/ptb", batch_size, args.max_sql)
 # Build LMModel model (bulid your language model here)
 
 nvoc = len(data_loader.vocabulary)
+print("nvoc: " + str(nvoc))
 ninput = 150
 nhid = 150
 nlayer = 4
@@ -139,7 +140,7 @@ for epoch in range(1, args.epochs+1):
     print("validation: {:.4f}, {:.4f}".format(valid_loss, valid_perplexity))
     curve_csv.write(
         "{:d},{:.4f},{:.4f},{:.4f},{:.4f}\n".format(
-        epoch + 1, train_loss, train_perplexity, valid_loss, valid_perplexity))
+        epoch, train_loss, train_perplexity, valid_loss, valid_perplexity))
     # writer.add_scalar('Loss/valid', valid_loss, epoch)
     # writer.add_scalar('Perplexity/valid', valid_perplexity, epoch)
     print('*' * 100)

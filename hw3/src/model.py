@@ -2,6 +2,57 @@ import torch
 import torch.nn as nn
 
 
+class TemporalAttention(nn.Module):
+    def __init__(self, ninput):
+        super().__init__()
+        self.context_encoder = nn.RNN(
+            input_size=ninput,
+            hidden_size=ninput // 2,
+            num_layers=1,
+            bidirectional=True,
+        )
+        self.linear1 = nn.Linear(ninput, ninput)
+        self.linear2 = nn.Linear(ninput, ninput)
+        self.linear = nn.Sequential(
+            nn.Linear(ninput * 2, ninput),
+            nn.Tanh(),
+            nn.Linear(ninput, 1),
+            nn.Tanh(),
+        )
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, s, x):
+        h, _ = self.context_encoder(x)
+        s = self.linear1(s)
+        e = []
+        for i in range(h.size(0)):
+            e.append(self.linear(torch.cat((s, h[i]), 1)))
+        e = torch.cat(e, 1)
+        e = self.softmax(e).t().contiguous().view(h.size(0), h.size(1), 1)
+        return (e * h).sum(0)
+
+
+class RNNwithAttention(nn.Module):
+    def __init__(self, ninput, nhid, nlayers):
+        super().__init__()
+        self.attention_model = TemporalAttention(ninput)
+        self.layers = [nn.LSTMCell(ninput, nhid)] + [nn.LSTMCell(nhid, nhid) for i in range(nlayers - 1)]
+        self.nlayers = nlayers
+
+    def forward(self, x):
+        hid = [None for i in range(self.nlayers)]
+        res = []
+        for i in range(x.size(0)):
+            input = x[i]
+            if i != 0:
+                hid[0] = (hid[0][0] + self.attention_model(hid[0][0], x), hid[0][1])
+            for j in range(self.nlayers):
+                hid[j] = self.layers[j](input, hid[j])
+                input = hid[j][0]
+            res.append(input)
+        return torch.stack(res, 0)
+
+
 class LMModel(nn.Module):
     # Language model is composed of three parts: a word embedding layer, a rnn network and a output layer. 
     # The word embedding layer have input as a sequence of word index (in the vocabulary) and output a sequence of vector where each one is a word embedding. 
@@ -49,3 +100,18 @@ class LMModel(nn.Module):
         # return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden
         return decoded.view(-1, decoded.size(1)), hidden
 
+
+
+if __name__ == "__main__":
+    # test attention
+    model = TemporalAttention(10)
+    s = torch.rand(20, 10)
+    x = torch.rand(30, 20, 10)
+    att = model(s, x)
+    print(att.shape)
+    
+    # test rnn_with_attention
+    x = torch.rand(30, 20, 150)
+    rnn = RNNwithAttention(150, 150, 4)
+    output = rnn(x)
+    print(output.shape)
