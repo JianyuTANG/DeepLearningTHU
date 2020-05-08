@@ -53,6 +53,25 @@ class RNNwithAttention(nn.Module):
         return torch.stack(res, 0)
 
 
+class LSTMwithAttention(nn.Module):
+    def __init__(self, ninput, nhid, nlayers, dropout=0.5, device="cpu"):
+        super().__init__()
+        self.attention_model = TemporalAttention(ninput)
+        self.lstm = nn.LSTM(
+            input_size=ninput,
+            hidden_size=nhid,
+            num_layers=nlayers,
+            bidirectional=False,
+            dropout=0.5,
+        )
+
+    def forward(self, x):
+        output, _ = self.lstm(x)
+        for i in range(output.size(0)):
+            output[i] += self.attention_model(output[i], x)
+        return output
+
+
 class LMModel(nn.Module):
     # Language model is composed of three parts: a word embedding layer, a rnn network and a output layer. 
     # The word embedding layer have input as a sequence of word index (in the vocabulary) and output a sequence of vector where each one is a word embedding. 
@@ -74,7 +93,15 @@ class LMModel(nn.Module):
         #     dropout=0.5,
         # )
 
-        self.rnn = RNNwithAttention(
+        # self.rnn = RNNwithAttention(
+        #     ninput=ninput,
+        #     nhid=nhid,
+        #     nlayers=nlayers,
+        #     dropout=0.5,
+        #     device=device,
+        # )
+
+        self.rnn = LSTMwithAttention(
             ninput=ninput,
             nhid=nhid,
             nlayers=nlayers,
@@ -125,5 +152,11 @@ if __name__ == "__main__":
     # test rnn_with_attention
     x = torch.rand(30, 20, 150)
     rnn = RNNwithAttention(150, 150, 4, 0.5)
+    output = rnn(x)
+    print(output.shape)
+
+    # test lstm_with_attention
+    x = torch.rand(30, 20, 150)
+    rnn = LSTMwithAttention(150, 150, 4, 0.5)
     output = rnn(x)
     print(output.shape)
