@@ -67,9 +67,10 @@ class LSTMwithAttention(nn.Module):
 
     def forward(self, x):
         output, _ = self.lstm(x)
+        res = []
         for i in range(output.size(0)):
-            output[i] += self.attention_model(output[i], x)
-        return output
+            res.append(self.attention_model(output[i], x) + output[i])
+        return torch.stack(res, 0)
 
 
 class LMModel(nn.Module):
