@@ -5,12 +5,12 @@ import torch.nn as nn
 class TemporalAttention(nn.Module):
     def __init__(self, ninput):
         super().__init__()
-        self.context_encoder = nn.RNN(
-            input_size=ninput,
-            hidden_size=ninput // 2,
-            num_layers=1,
-            bidirectional=True,
-        )
+        # self.context_encoder = nn.RNN(
+        #     input_size=ninput,
+        #     hidden_size=ninput // 2,
+        #     num_layers=1,
+        #     bidirectional=True,
+        # )
         self.linear = nn.Sequential(
             nn.Linear(ninput * 2, ninput),
             nn.Tanh(),
@@ -19,8 +19,8 @@ class TemporalAttention(nn.Module):
         )
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, s, x):
-        h, _ = self.context_encoder(x)
+    def forward(self, s, h):
+        # h, _ = self.context_encoder(x)
         e = []
         for i in range(h.size(0)):
             e.append(self.linear(torch.cat((s, h[i]), 1)))
@@ -57,6 +57,12 @@ class LSTMwithAttention(nn.Module):
     def __init__(self, ninput, nhid, nlayers, dropout=0.5, device="cpu"):
         super().__init__()
         self.attention_model = TemporalAttention(ninput)
+        self.contex_encoder = nn.RNN(
+            input_size=ninput,
+            hidden_size=ninput // 2,
+            num_layers=1,
+            bidirectional=True,
+        )
         self.lstm = nn.LSTM(
             input_size=ninput,
             hidden_size=nhid,
@@ -67,9 +73,10 @@ class LSTMwithAttention(nn.Module):
 
     def forward(self, x):
         output, _ = self.lstm(x)
+        h, _ = self.contex_encoder(x)
         res = []
         for i in range(output.size(0)):
-            res.append(self.attention_model(output[i], x) + output[i])
+            res.append(self.attention_model(output[i], h) + output[i])
         return torch.stack(res, 0)
 
 
@@ -157,7 +164,8 @@ if __name__ == "__main__":
     print(output.shape)
 
     # test lstm_with_attention
-    x = torch.rand(30, 20, 150)
-    rnn = LSTMwithAttention(150, 150, 4, 0.5)
-    output = rnn(x)
-    print(output.shape)
+    for i in range(100):
+        x = torch.rand(30, 20, 150)
+        rnn = LSTMwithAttention(150, 150, 4, 0.5)
+        output = rnn(x)
+        print(output.shape)
