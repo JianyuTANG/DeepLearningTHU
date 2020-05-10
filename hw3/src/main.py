@@ -26,14 +26,13 @@ parser.add_argument('--max_sql', type=int, default=35,
 parser.add_argument('--seed', type=int, default=1234,
                     help='set random seed')
 parser.add_argument('--cuda', action='store_true', help='use CUDA device')
-parser.add_argument('--attention', type=bool, default=True, help='use attention or not')
+parser.add_argument('--attention', type=bool, default=False, help='use attention or not')
 parser.add_argument('--gpu_id', type=int, default=0, help='GPU device id used')
 
 args = parser.parse_args()
 
 # Set the random seed manually for reproducibility.
 torch.manual_seed(args.seed)
-
 # Use gpu or cpu to train
 use_gpu = True
 
