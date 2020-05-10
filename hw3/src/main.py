@@ -120,7 +120,7 @@ def evaluate():
 
         output = torch.argmax(output, 1).view(l, b).t().contiguous().cpu()
         target = target.t().contiguous()
-        total_score += bleu_metric(output, target, 4)
+        total_score += bleu_metric(output, target, 2)
 
         batch_num += 1
 
@@ -154,11 +154,13 @@ def train():
         output, _ = model(data)
 
         loss = criterion(output, target.to(device).view(-1))
+        loss.backward()
+        optimizer.step()
         total_loss += loss.item()
 
         output = torch.argmax(output, 1).view(l, b).t().contiguous().cpu()
         target = target.t().contiguous()
-        total_score += bleu_metric(output, target, 4)
+        total_score += bleu_metric(output, target, 2)
 
         batch_num += 1
 
