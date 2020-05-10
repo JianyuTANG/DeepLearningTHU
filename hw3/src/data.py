@@ -62,7 +62,7 @@ class Corpus(object):
             data_loader = self.valid
             self.valid_si = self.valid_si + seq_len
         data = data_loader[start_index:start_index+seq_len, :]
-        target = data_loader[start_index+1:start_index+seq_len+1, :].view(-1)
+        target = data_loader[start_index+1:start_index+seq_len+1, :]
 
         ## end_flag indicates whether a epoch (train or valid epoch) has been ended
         if self.dset_flag == "train" and self.train_si+1 == self.train.size(0):

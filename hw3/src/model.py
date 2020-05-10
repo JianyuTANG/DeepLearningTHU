@@ -137,7 +137,6 @@ class LMModel(nn.Module):
         else:
             output, hidden = self.rnn(embeddings)
 
-
         ########################################
 
         output = self.drop(output)

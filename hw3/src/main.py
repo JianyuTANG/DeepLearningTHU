@@ -1,10 +1,12 @@
 # coding: utf-8
 import argparse
 import time
+import collections
 import math
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
 import data
 from model import LMModel
 import os
@@ -71,24 +73,61 @@ criterion = nn.CrossEntropyLoss().to(device)
 # Calculate the average cross-entropy loss between the prediction and the ground truth word.
 # And then exp(average cross-entropy loss) is perplexity.
 
+def bleu_metric(candidates, references, max_n):
+    def get_max_n_grams(s):
+        ans = []
+        for n in range(1, max_n + 1):
+            ans += list(zip(*[s[index:] for index in range(n)]))
+        return ans
+
+    cnt_i = torch.zeros(max_n)
+    cnt = torch.zeros(max_n)
+    length = candidates.size(0)
+    for i in range(length):
+        candidate = candidates[i].numpy().tolist()
+        reference = references[i].numpy().tolist()
+        candidate_counter = collections.Counter(get_max_n_grams(candidate))
+        reference_counter = collections.Counter(get_max_n_grams(reference))
+        intersected = candidate_counter & reference_counter
+        for x in intersected:
+            cnt_i[len(x) - 1] += intersected[x]
+        for x in candidate_counter:
+            cnt[len(x) - 1] += candidate_counter[x]
+
+    if min(cnt_i) == 0:
+        return 0.0
+    else:
+        score = torch.exp(torch.mean(torch.log(cnt_i / cnt)))
+        return score.item()
+
+
 def evaluate():
     model.train(False)
     total_loss = 0.0
+    total_score = 0.0
     batch_num = 0
     end_flag = False
-    data_loader.set_train()
+    data_loader.set_valid()
     while not end_flag:
         data, target, end_flag = data_loader.get_batch()
         data = data.to(device)
-        target = target.to(device)
+        target = target
+        l, b = target.size(0), target.size(1)
         output, _ = model(data)
-        loss = criterion(output, target)
+
+        loss = criterion(output, target.to(device).view(-1))
         total_loss += loss.item()
+
+        output = torch.argmax(output, 1).view(l, b).t().contiguous().cpu()
+        target = target.t().contiguous()
+        total_score += bleu_metric(output, target, 4)
+
         batch_num += 1
 
     loss = total_loss / batch_num
+    score = total_score / batch_num
     perplexity = math.exp(loss)
-    return loss, perplexity
+    return loss, perplexity, score
 
 ########################################
 
@@ -103,24 +142,30 @@ optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
 def train():
     model.train(True)
     total_loss = 0.0
+    total_score = 0.0
     batch_num = 0
     end_flag = False
     data_loader.set_train()
     while not end_flag:
         data, target, end_flag = data_loader.get_batch()
+        l, b = target.size(0), target.size(1)
         data = data.to(device)
         optimizer.zero_grad()
-        target = target.to(device)
         output, _ = model(data)
-        loss = criterion(output, target)
-        loss.backward()
-        optimizer.step()
+
+        loss = criterion(output, target.to(device).view(-1))
         total_loss += loss.item()
+
+        output = torch.argmax(output, 1).view(l, b).t().contiguous().cpu()
+        target = target.t().contiguous()
+        total_score += bleu_metric(output, target, 4)
+
         batch_num += 1
 
     loss = total_loss / batch_num
+    score = total_score / batch_num
     perplexity = math.exp(loss)
-    return loss, perplexity
+    return loss, perplexity, score
 
 ########################################
 
@@ -132,17 +177,16 @@ curve_csv = open("curve.csv", "w")
 # writer = SummaryWriter("log/")
 for epoch in range(1, args.epochs+1):
     print('epoch:{:d}/{:d}'.format(epoch, args.epochs))
-    train_loss, train_perplexity = train()
-    print("training: {:.4f}, {:.4f}".format(train_loss, train_perplexity))
+    train_loss, train_perplexity, train_score = train()
+    print("training: {:.4f}, {:.4f}, {:.4f}".format(train_loss, train_perplexity, train_score))
     # writer.add_scalar('Loss/train', train_loss, epoch)
     # writer.add_scalar('Perplexity/train', train_loss, epoch)
-    valid_loss, valid_perplexity = evaluate()
-    print("validation: {:.4f}, {:.4f}".format(valid_loss, valid_perplexity))
+    valid_loss, valid_perplexity, valid_score = evaluate()
+    print("validation: {:.4f}, {:.4f}, {:.4f}".format(valid_loss, valid_perplexity, valid_score))
     curve_csv.write(
-        "{:d},{:.4f},{:.4f},{:.4f},{:.4f}\n".format(
-        epoch, train_loss, train_perplexity, valid_loss, valid_perplexity))
+        "{:d},{:.4f},{:.4f},{:.4f},{:.4f},{:.4f},{:.4f}\n".format(
+        epoch, train_loss, train_perplexity,train_score, valid_loss, valid_perplexity, valid_score))
     # writer.add_scalar('Loss/valid', valid_loss, epoch)
     # writer.add_scalar('Perplexity/valid', valid_perplexity, epoch)
     print('*' * 100)
-
 
