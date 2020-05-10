@@ -85,7 +85,7 @@ class LMModel(nn.Module):
     # The word embedding layer have input as a sequence of word index (in the vocabulary) and output a sequence of vector where each one is a word embedding. 
     # The rnn network has input of each word embedding and output a hidden feature corresponding to each word embedding.
     # The output layer has input as the hidden feature and output the probability of each word in the vocabulary.
-    def __init__(self, nvoc, ninput, nhid, nlayers, device):
+    def __init__(self, nvoc, ninput, nhid, nlayers, device, attention=True):
         super(LMModel, self).__init__()
         self.drop = nn.Dropout(0.5)
         self.encoder = nn.Embedding(nvoc, ninput)
@@ -93,29 +93,24 @@ class LMModel(nn.Module):
         ########################################
         # Construct you RNN model here. You can add additional parameters to the function.
 
-        # self.rnn = nn.LSTM(
-        #     input_size=ninput,
-        #     hidden_size=nhid,
-        #     num_layers=nlayers,
-        #     bidirectional=False,
-        #     dropout=0.5,
-        # )
+        if attention:
+            self.rnn = LSTMwithAttention(
+                ninput=ninput,
+                nhid=nhid,
+                nlayers=nlayers,
+                dropout=0.5,
+                device=device,
+            )
+        else:
+            self.rnn = nn.LSTM(
+                input_size=ninput,
+                hidden_size=nhid,
+                num_layers=nlayers,
+                bidirectional=False,
+                dropout=0.5,
+            )
 
-        # self.rnn = RNNwithAttention(
-        #     ninput=ninput,
-        #     nhid=nhid,
-        #     nlayers=nlayers,
-        #     dropout=0.5,
-        #     device=device,
-        # )
-
-        self.rnn = LSTMwithAttention(
-            ninput=ninput,
-            nhid=nhid,
-            nlayers=nlayers,
-            dropout=0.5,
-            device=device,
-        )
+        self.attention = attention
 
         ########################################
         self.decoder = nn.Linear(nhid, nvoc)
@@ -137,8 +132,11 @@ class LMModel(nn.Module):
         # With embeddings, you can get your output here.
         # Output has the dimension of sequence_length * batch_size * number of classes
 
-        #output, hidden = self.rnn(embeddings)
-        output = self.rnn(embeddings)
+        if self.attention:
+            output = self.rnn(embeddings)
+        else:
+            output, hidden = self.rnn(embeddings)
+
 
         ########################################
 
