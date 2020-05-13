@@ -6,6 +6,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import MultiStepLR
 
 import data
 from model import LMModel
@@ -30,6 +31,7 @@ parser.add_argument('--seed', type=int, default=1234,
 parser.add_argument('--cuda', action='store_true', help='use CUDA device')
 parser.add_argument('--attention', type=bool, default=False, help='use attention or not')
 parser.add_argument('--gpu_id', type=int, default=0, help='GPU device id used')
+parser.add_argument('--clip', type=int, default=5, help='set gradient clipping')
 
 args = parser.parse_args()
 
@@ -139,6 +141,9 @@ def evaluate():
 lr = args.lr
 optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
 
+milestones = [60, 70, 80, 90]
+scheduler = MultiStepLR(optimizer, milestones=milestones, gamma=0.3)
+
 def train():
     model.train(True)
     total_loss = 0.0
@@ -155,6 +160,8 @@ def train():
 
         loss = criterion(output, target.to(device).view(-1))
         loss.backward()
+
+        torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         optimizer.step()
         total_loss += loss.item()
 
@@ -180,6 +187,7 @@ curve_csv = open("curve.csv", "w")
 for epoch in range(1, args.epochs+1):
     print('epoch:{:d}/{:d}'.format(epoch, args.epochs))
     train_loss, train_perplexity, train_score = train()
+    scheduler.step()
     print("training: {:.4f}, {:.4f}, {:.4f}".format(train_loss, train_perplexity, train_score))
     # writer.add_scalar('Loss/train', train_loss, epoch)
     # writer.add_scalar('Perplexity/train', train_loss, epoch)
