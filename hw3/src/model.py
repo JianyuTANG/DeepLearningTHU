@@ -65,10 +65,10 @@ class LSTMwithAttention(nn.Module):
             bidirectional=False,
             dropout=0.5,
         )
-        init.orthogonal(self.lstm.all_weights[0][0])
-        init.orthogonal(self.lstm.all_weights[0][1])
-        init.orthogonal(self.lstm.all_weights[1][0])
-        init.orthogonal(self.lstm.all_weights[1][1])
+        init.orthogonal_(self.lstm.all_weights[0][0])
+        init.orthogonal_(self.lstm.all_weights[0][1])
+        init.orthogonal_(self.lstm.all_weights[1][0])
+        init.orthogonal_(self.lstm.all_weights[1][1])
 
     def forward(self, x):
         output, _ = self.lstm(x)
@@ -107,10 +107,10 @@ class LMModel(nn.Module):
                 bidirectional=False,
                 dropout=0.5,
             )
-            init.orthogonal(self.rnn.all_weights[0][0])
-            init.orthogonal(self.rnn.all_weights[0][1])
-            init.orthogonal(self.rnn.all_weights[1][0])
-            init.orthogonal(self.rnn.all_weights[1][1])
+            init.orthogonal_(self.rnn.all_weights[0][0])
+            init.orthogonal_(self.rnn.all_weights[0][1])
+            init.orthogonal_(self.rnn.all_weights[1][0])
+            init.orthogonal_(self.rnn.all_weights[1][1])
 
         self.attention = attention
 
