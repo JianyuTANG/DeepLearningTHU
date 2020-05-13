@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.init as init
 
 
 class TemporalAttention(nn.Module):
@@ -57,12 +58,6 @@ class LSTMwithAttention(nn.Module):
     def __init__(self, ninput, nhid, nlayers, dropout=0.5, device="cpu"):
         super().__init__()
         self.attention_model = TemporalAttention(ninput)
-        # self.contex_encoder = nn.RNN(
-        #     input_size=ninput,
-        #     hidden_size=ninput // 2,
-        #     num_layers=1,
-        #     bidirectional=True,
-        # )
         self.lstm = nn.LSTM(
             input_size=ninput,
             hidden_size=nhid,
@@ -70,10 +65,13 @@ class LSTMwithAttention(nn.Module):
             bidirectional=False,
             dropout=0.5,
         )
+        init.orthogonal(self.lstm.all_weights[0][0])
+        init.orthogonal(self.lstm.all_weights[0][1])
+        init.orthogonal(self.lstm.all_weights[1][0])
+        init.orthogonal(self.lstm.all_weights[1][1])
 
     def forward(self, x):
         output, _ = self.lstm(x)
-        # h, _ = self.contex_encoder(x)
         res = []
         for i in range(output.size(0)):
             res.append(self.attention_model(output[i], x[ : i + 1]) + output[i])
@@ -109,6 +107,10 @@ class LMModel(nn.Module):
                 bidirectional=False,
                 dropout=0.5,
             )
+            init.orthogonal(self.rnn.all_weights[0][0])
+            init.orthogonal(self.rnn.all_weights[0][1])
+            init.orthogonal(self.rnn.all_weights[1][0])
+            init.orthogonal(self.rnn.all_weights[1][1])
 
         self.attention = attention
 
