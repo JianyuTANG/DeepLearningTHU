@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.init as init
+import torch.nn.utils.weight_norm as weight_norm
 
 
 class TemporalAttention(nn.Module):
@@ -107,10 +108,11 @@ class LMModel(nn.Module):
                 bidirectional=False,
                 dropout=0.5,
             )
-            init.orthogonal_(self.rnn.all_weights[0][0])
-            init.orthogonal_(self.rnn.all_weights[0][1])
-            init.orthogonal_(self.rnn.all_weights[1][0])
-            init.orthogonal_(self.rnn.all_weights[1][1])
+
+            # init.orthogonal_(self.rnn.all_weights[0][0])
+            # init.orthogonal_(self.rnn.all_weights[0][1])
+            # init.orthogonal_(self.rnn.all_weights[1][0])
+            # init.orthogonal_(self.rnn.all_weights[1][1])
 
         self.attention = attention
 

@@ -107,6 +107,8 @@ def evaluate():
     model.train(False)
     total_loss = 0.0
     total_score = 0.0
+    total_score3 = 0.0
+    total_score4 = 0.0
     batch_num = 0
     end_flag = False
     data_loader.set_valid()
@@ -123,11 +125,14 @@ def evaluate():
         output = torch.argmax(output, 1).view(l, b).t().contiguous().cpu()
         target = target.t().contiguous()
         total_score += bleu_metric(output, target, 2)
+        total_score3 += bleu_metric(output, target, 3)
+        total_score4 += bleu_metric(output, target, 4)
 
         batch_num += 1
 
     loss = total_loss / batch_num
     score = total_score / batch_num
+    # print("{:.4f}, {:.4f}\n".format(total_score3 / batch_num, total_score4 / batch_num))
     perplexity = math.exp(loss)
     return loss, perplexity, score
 
@@ -161,7 +166,9 @@ def train():
         loss = criterion(output, target.to(device).view(-1))
         loss.backward()
 
-        torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+        # gradient clipping
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+        
         optimizer.step()
         total_loss += loss.item()
 
@@ -187,7 +194,7 @@ curve_csv = open("curve.csv", "w")
 for epoch in range(1, args.epochs+1):
     print('epoch:{:d}/{:d}'.format(epoch, args.epochs))
     train_loss, train_perplexity, train_score = train()
-    scheduler.step()
+    # scheduler.step()
     print("training: {:.4f}, {:.4f}, {:.4f}".format(train_loss, train_perplexity, train_score))
     # writer.add_scalar('Loss/train', train_loss, epoch)
     # writer.add_scalar('Perplexity/train', train_loss, epoch)
